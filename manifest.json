@@ -1,7 +1,7 @@
 {
     "id": "./index.html",
-    "name": "Clair — Budget du foyer",
-    "short_name": "Clair",
+    "name": "AkFi — Budget du foyer",
+    "short_name": "AkFi",
     "description": "Suivez vos dépenses, organisez votre épargne et avancez vers vos objectifs.",
     "lang": "fr-MA",
     "start_url": "./index.html",
