@@ -1,4 +1,4 @@
-import './budget-core.js';
+import BudgetCore from './budget-core.js';
 import { supabase, supabaseConfigured } from './supabase-client.js';
 
 const STORAGE_KEY = 'clair-budget-v1';

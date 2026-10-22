@@ -1,8 +1,4 @@
-(function attachBudgetCore(root, factory) {
-    const api = factory();
-    if (typeof module === 'object' && module.exports) module.exports = api;
-    else root.BudgetCore = api;
-}(globalThis, () => {
+const BudgetCore = (() => {
     function isValidAmount(value) {
         const amount = Number(value);
         return Number.isFinite(amount) && amount > 0;
@@ -121,4 +117,7 @@
         parseCsvAmount,
         parseCsvDate,
     });
-}));
+})();
+
+globalThis.BudgetCore = BudgetCore;
+export default BudgetCore;
