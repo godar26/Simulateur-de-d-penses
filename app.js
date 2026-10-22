@@ -1,3 +1,6 @@
+import './budget-core.js';
+import { supabase, supabaseConfigured } from './supabase-client.js';
+
 const STORAGE_KEY = 'clair-budget-v1';
 const defaultCategories = {
     logement: { label: 'Logement & charges', icon: '⌂', budget: 1050, color: '#10b981' },
@@ -53,43 +56,56 @@ function isValidState(value) {
         && Number.isFinite(value.monthSavings) && value.monthSavings >= 0;
 }
 
+function normalizeState(value) {
+    if (!isValidState(value)) return null;
+    const stored = { ...value };
+    stored.userName = typeof stored.userName === 'string' ? stored.userName.trim().slice(0, 40) : '';
+    stored.currency = ['EUR', 'USD', 'XOF', 'MAD'].includes(stored.currency) ? stored.currency : 'EUR';
+    stored.theme = stored.theme === 'light' ? 'light' : 'dark';
+    const savedCategories = stored.categories && typeof stored.categories === 'object' && !Array.isArray(stored.categories)
+        ? stored.categories
+        : {};
+    stored.categories = {
+        ...Object.fromEntries(Object.entries(defaultCategories).map(([key, category]) => [key, { ...category }])),
+        ...savedCategories,
+    };
+    stored.recurring = Array.isArray(stored.recurring) ? stored.recurring : [];
+    stored.contributions = Array.isArray(stored.contributions) ? stored.contributions : [];
+    if (stored.monthKey !== currentMonth) {
+        stored.monthKey = currentMonth;
+        stored.monthSavings = 0;
+    }
+    stored.expenses = stored.expenses.filter((expense) => expense && typeof expense.name === 'string'
+        && Number.isFinite(expense.amount) && expense.amount > 0
+        && (expense.type === 'income' || stored.categories[expense.category])
+        && BudgetCore.isValidDate(expense.date))
+        .map((expense) => ({ ...expense, type: expense.type === 'income' ? 'income' : 'expense' }));
+    stored.goals = stored.goals.filter((goal) => goal && typeof goal.name === 'string'
+        && Number.isFinite(goal.current) && Number.isFinite(goal.target) && goal.target > 0);
+    stored.recurring = stored.recurring.filter((rule) => rule && typeof rule.name === 'string'
+        && Number.isFinite(rule.amount) && rule.amount > 0 && Number.isInteger(rule.day)
+        && ['income', 'expense'].includes(rule.type)
+        && (rule.type === 'income' || stored.categories[rule.category]));
+    stored.contributions = stored.contributions.filter((entry) => entry && Number.isFinite(entry.amount)
+        && entry.amount > 0 && BudgetCore.isValidDate(entry.date));
+    return stored;
+}
+
 function loadState() {
     try {
-        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
-        if (isValidState(stored)) {
-            stored.userName = typeof stored.userName === 'string' ? stored.userName.trim().slice(0, 40) : '';
-            stored.currency = ['EUR', 'USD', 'XOF', 'MAD'].includes(stored.currency) ? stored.currency : 'EUR';
-            stored.theme = stored.theme === 'light' ? 'light' : 'dark';
-            stored.categories = { ...Object.fromEntries(Object.entries(defaultCategories).map(([key, category]) => [key, { ...category }])), ...(stored.categories || {}) };
-            stored.recurring = Array.isArray(stored.recurring) ? stored.recurring : [];
-            stored.contributions = Array.isArray(stored.contributions) ? stored.contributions : [];
-            if (stored.monthKey !== currentMonth) {
-                stored.monthKey = currentMonth;
-                stored.monthSavings = 0;
-            }
-            stored.expenses = stored.expenses.filter((expense) => expense && typeof expense.name === 'string'
-                && Number.isFinite(expense.amount) && expense.amount > 0
-                && (expense.type === 'income' || stored.categories[expense.category])
-                && /^\d{4}-\d{2}-\d{2}$/.test(expense.date))
-                .map((expense) => ({ ...expense, type: expense.type === 'income' ? 'income' : 'expense' }));
-            stored.goals = stored.goals.filter((goal) => goal && typeof goal.name === 'string'
-                && Number.isFinite(goal.current) && Number.isFinite(goal.target) && goal.target > 0);
-            stored.recurring = stored.recurring.filter((rule) => rule && typeof rule.name === 'string'
-                && Number.isFinite(rule.amount) && rule.amount > 0 && Number.isInteger(rule.day)
-                && ['income', 'expense'].includes(rule.type)
-                && (rule.type === 'income' || stored.categories[rule.category]));
-            stored.contributions = stored.contributions.filter((entry) => entry && Number.isFinite(entry.amount)
-                && entry.amount > 0 && /^\d{4}-\d{2}-\d{2}$/.test(entry.date));
-            return stored;
-        }
+        return normalizeState(JSON.parse(localStorage.getItem(STORAGE_KEY))) || makeInitialState();
     } catch {
-        // A missing or malformed browser entry starts with a clean demo budget.
+        return makeInitialState();
     }
-    return makeInitialState();
 }
 
 let state = loadState();
 let categories = state.categories;
+let currentUser = null;
+let cloudSyncTimer = null;
+let cloudSyncPaused = false;
+let authGeneration = 0;
+let lastLoadedUserId = '';
 function updateCurrencyFormatters() {
     euro = BudgetCore.currencyFormatter(state.currency);
     euroExact = BudgetCore.currencyFormatter(state.currency, true);
@@ -107,12 +123,120 @@ const incomeEntryModal = byId('income-entry-modal');
 const categoryModal = byId('category-modal');
 const recurringModal = byId('recurring-modal');
 const welcomeModal = byId('welcome-modal');
+const accountModal = byId('account-modal');
 
 function saveState() {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        queueCloudSync();
     } catch {
         showToast('Enregistrement local indisponible sur cet appareil.');
+    }
+}
+
+const CLOUD_OWNER_KEY = `${STORAGE_KEY}-owner`;
+
+function setCloudStatus(message, mode = '') {
+    byId('account-status').textContent = message;
+    const indicator = byId('cloud-indicator');
+    indicator.classList.remove('is-ready', 'is-signed-in', 'is-syncing', 'is-error');
+    if (mode) indicator.classList.add(`is-${mode}`);
+}
+
+function updateAccountView() {
+    const emailInput = byId('account-email');
+    const accountForm = byId('account-form');
+    const signOutButton = byId('account-sign-out');
+    byId('account-send-link').disabled = !supabaseConfigured;
+    emailInput.disabled = !supabaseConfigured || Boolean(currentUser);
+    accountForm.hidden = !supabaseConfigured || Boolean(currentUser);
+    signOutButton.hidden = !currentUser;
+    if (!supabaseConfigured) {
+        byId('account-description').textContent = 'La synchronisation cloud n’est pas configurée. Ton budget reste enregistré sur cet appareil.';
+        setCloudStatus('Configure les variables Supabase pour activer la synchronisation.');
+    } else if (currentUser) {
+        emailInput.value = currentUser.email || '';
+        byId('account-description').textContent = `Connecté avec ${currentUser.email || 'ton compte'}.`;
+        setCloudStatus('Synchronisation activée.', 'ready');
+    } else {
+        byId('account-description').textContent = 'Un lien de connexion sécurisé sera envoyé par e-mail.';
+        setCloudStatus('Tes données restent locales jusqu’à la connexion.');
+    }
+}
+
+function applySyncedState(nextState) {
+    state = nextState;
+    categories = state.categories;
+    updateCurrencyFormatters();
+    byId('currency-picker').value = state.currency;
+    document.body.classList.toggle('light-mode', state.theme === 'light');
+    byId('toggle-theme').textContent = state.theme === 'dark' ? '☼' : '☾';
+    byId('toggle-theme').setAttribute('aria-label', state.theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre');
+    renderGreeting();
+    populateCategorySelect();
+    render();
+}
+
+function queueCloudSync() {
+    if (!supabaseConfigured || !currentUser || cloudSyncPaused) return;
+    clearTimeout(cloudSyncTimer);
+    setCloudStatus('Modifications en attente de synchronisation…', 'syncing');
+    cloudSyncTimer = window.setTimeout(() => syncStateToCloud(currentUser.id), 700);
+}
+
+async function syncStateToCloud(userId) {
+    if (!supabaseConfigured || !currentUser || currentUser.id !== userId || cloudSyncPaused) return;
+    try {
+        const { error } = await supabase.from('budget_state').upsert({
+            user_id: userId,
+            payload: state,
+            updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+        if (currentUser?.id !== userId) return;
+        if (error) throw error;
+        localStorage.setItem(CLOUD_OWNER_KEY, userId);
+        setCloudStatus('Budget synchronisé.', 'ready');
+    } catch (error) {
+        if (currentUser?.id !== userId) return;
+        setCloudStatus('Échec de synchronisation. Les données locales sont conservées.', 'error');
+    }
+}
+
+async function loadCloudState(user, generation) {
+    if (!supabaseConfigured || !user) return;
+    cloudSyncPaused = true;
+    setCloudStatus('Chargement du budget cloud…', 'syncing');
+    try {
+        const { data, error } = await supabase.from('budget_state')
+            .select('payload')
+            .eq('user_id', user.id)
+            .maybeSingle();
+        if (error) throw error;
+        if (authGeneration !== generation || currentUser?.id !== user.id) return;
+
+        if (data?.payload) {
+            const remoteState = normalizeState(data.payload);
+            if (!remoteState) throw new Error('Le budget cloud n’a pas le format attendu.');
+            applySyncedState(remoteState);
+        } else if (localStorage.getItem(CLOUD_OWNER_KEY)
+            && localStorage.getItem(CLOUD_OWNER_KEY) !== user.id) {
+            applySyncedState(makeInitialState());
+        }
+
+        const { error: saveError } = await supabase.from('budget_state').upsert({
+            user_id: user.id,
+            payload: state,
+            updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+        if (saveError) throw saveError;
+        localStorage.setItem(CLOUD_OWNER_KEY, user.id);
+        setCloudStatus('Budget synchronisé.', 'ready');
+    } catch (error) {
+        if (authGeneration === generation && currentUser?.id === user.id) {
+            setCloudStatus(`Synchronisation impossible : ${error.message}. Le budget local est conservé.`, 'error');
+        }
+    } finally {
+        if (authGeneration === generation) cloudSyncPaused = false;
     }
 }
 
@@ -569,6 +693,7 @@ byId('toggle-theme').setAttribute('aria-label', state.theme === 'dark' ? 'Passer
 applyRecurringTransactions();
 render();
 fillCategoryForm(Object.keys(categories)[0]);
+updateAccountView();
 
 byId('open-expense').addEventListener('click', () => {
     byId('expense-date').min = dateThisMonth(1);
@@ -588,10 +713,66 @@ byId('edit-income').addEventListener('click', () => {
     openModal(incomeModal);
     byId('income-amount').focus();
 });
+byId('account-button').addEventListener('click', () => {
+    openModal(accountModal);
+});
+byId('account-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!supabaseConfigured) return;
+    const email = String(new FormData(event.currentTarget).get('email')).trim();
+    if (!email) return;
+    byId('account-send-link').disabled = true;
+    setCloudStatus('Envoi du lien de connexion…', 'syncing');
+    try {
+        const { error } = await supabase.auth.signInWithOtp({
+            email,
+            options: { emailRedirectTo: window.location.origin },
+        });
+        if (error) throw error;
+        setCloudStatus('Lien envoyé. Consulte ta boîte e-mail pour connecter ce compte.');
+    } catch (error) {
+        setCloudStatus(`Impossible d’envoyer le lien : ${error.message}`, 'error');
+    } finally {
+        byId('account-send-link').disabled = false;
+    }
+});
+byId('account-sign-out').addEventListener('click', async () => {
+    try {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+        closeModal(accountModal);
+    } catch (error) {
+        setCloudStatus(`Déconnexion impossible : ${error.message}`, 'error');
+    }
+});
 byId('edit-name').addEventListener('click', () => {
     byId('welcome-name').value = state.userName;
     openModal(welcomeModal);
     byId('welcome-name').focus();
+});
+byId('account-button').addEventListener('click', () => openModal(accountModal));
+byId('account-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!supabaseConfigured) return;
+    const email = String(new FormData(event.currentTarget).get('email')).trim();
+    if (!email) return;
+    byId('account-send-link').disabled = true;
+    setCloudStatus('Envoi du lien de connexion…', 'syncing');
+    const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: window.location.origin },
+    });
+    byId('account-send-link').disabled = false;
+    if (error) {
+        setCloudStatus(`Impossible d’envoyer le lien : ${error.message}`, 'error');
+        return;
+    }
+    setCloudStatus('Lien envoyé. Consulte ta boîte e-mail pour connecter ce compte.');
+});
+byId('account-sign-out').addEventListener('click', async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) setCloudStatus(`Déconnexion impossible : ${error.message}`, 'error');
+    else closeModal(accountModal);
 });
 byId('currency-picker').addEventListener('change', (event) => {
     state.currency = event.currentTarget.value;
@@ -630,6 +811,7 @@ byId('delete-category').addEventListener('click', () => {
     state.categories = categories;
     populateCategorySelect();
     fillCategoryForm(Object.keys(categories)[0]);
+    updateAccountView();
     render();
     showToast('Catégorie supprimée.');
 });
@@ -825,6 +1007,32 @@ document.querySelectorAll('.nav-link').forEach((link) => {
         link.setAttribute('aria-current', 'page');
     });
 });
+
+updateAccountView();
+if (supabaseConfigured) {
+    supabase.auth.onAuthStateChange((event, session) => {
+        const nextUser = session?.user || null;
+        if (!nextUser) {
+            currentUser = null;
+            authGeneration += 1;
+            lastLoadedUserId = '';
+            cloudSyncPaused = false;
+            updateAccountView();
+            return;
+        }
+
+        const userChanged = currentUser?.id !== nextUser.id;
+        currentUser = nextUser;
+        updateAccountView();
+        if (userChanged || lastLoadedUserId !== nextUser.id || event === 'SIGNED_IN') {
+            authGeneration += 1;
+            lastLoadedUserId = nextUser.id;
+            const generation = authGeneration;
+            window.setTimeout(() => loadCloudState(nextUser, generation), 0);
+        }
+    });
+}
+window.addEventListener('online', queueCloudSync);
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('./service-worker.js').catch(() => { });

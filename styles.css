@@ -1471,6 +1471,63 @@ h2 {
     }
 }
 
+.account-button {
+    position: relative;
+}
+
+.cloud-indicator {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    width: 7px;
+    height: 7px;
+    border: 1px solid #172235;
+    border-radius: 50%;
+    background: #7c8795;
+}
+
+.cloud-indicator.is-ready {
+    background: #10b981;
+}
+
+.cloud-indicator.is-signed-in {
+    background: #e3b85d;
+}
+
+.cloud-indicator.is-syncing {
+    background: #e3b85d;
+    animation: cloud-pulse .9s ease-in-out infinite alternate;
+}
+
+.cloud-indicator.is-error {
+    background: #ef886a;
+}
+
+#account-form {
+    display: grid;
+    gap: 10px;
+}
+
+#account-form .field-label {
+    margin: 4px 0 -5px;
+}
+
+#account-sign-out {
+    margin-top: 8px;
+}
+
+body.light-mode .cloud-indicator {
+    border-color: #f6f8fa;
+}
+
+@keyframes cloud-pulse {
+    to { opacity: .45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cloud-indicator.is-syncing { animation-duration: .01ms; }
+}
+
 :root {
     color-scheme: dark;
     --paper: #0F172A;

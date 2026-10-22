@@ -7,11 +7,10 @@
     <meta name="theme-color" content="#0F172A">
     <meta name="description" content="Suivez vos dépenses, organisez votre épargne et avancez vers vos objectifs.">
     <title>AkFi — Budget du foyer</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="icons/clair-192.svg" type="image/svg+xml">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/icons/clair-192.svg" type="image/svg+xml">
     <link rel="stylesheet" href="styles.css">
-    <script src="budget-core.js" defer></script>
-    <script src="app.js" defer></script>
+    <script type="module" src="/main.js"></script>
 </head>
 
 <body>
@@ -67,6 +66,10 @@
                         </select></label>
                     <button class="icon-button theme-toggle" id="toggle-theme" type="button"
                         aria-label="Passer en mode clair" title="Passer en mode clair">☼</button>
+                    <button class="icon-button account-button" id="account-button" type="button"
+                        aria-label="Synchronisation du budget" title="Synchronisation du budget">
+                        <span aria-hidden="true">☁</span><span class="cloud-indicator" id="cloud-indicator"></span>
+                    </button>
                     <button class="avatar avatar-small" id="edit-name" type="button"
                         aria-label="Modifier le prénom">M</button>
                 </div>
@@ -290,6 +293,26 @@
             <div class="modal-actions"><button class="button button-primary" type="submit">Entrer dans mon
                     espace</button></div>
         </form>
+    </dialog>
+
+    <dialog class="modal" id="account-modal" aria-labelledby="account-modal-title">
+        <div class="modal-form">
+            <div class="modal-header">
+                <div>
+                    <p class="section-kicker">SAUVEGARDE PERSONNELLE</p>
+                    <h2 id="account-modal-title">Synchroniser mon budget</h2>
+                </div>
+                <button class="modal-close" type="button" data-close aria-label="Fermer">×</button>
+            </div>
+            <p class="modal-description" id="account-description">Connecte-toi pour retrouver tes données sur tes appareils.</p>
+            <form id="account-form">
+                <label class="field-label" for="account-email">Adresse e-mail</label>
+                <input id="account-email" name="email" type="email" autocomplete="email" required>
+                <div class="modal-actions"><button class="button button-primary" id="account-send-link" type="submit">M’envoyer un lien de connexion</button></div>
+            </form>
+            <p class="form-hint" id="account-status" role="status" aria-live="polite"></p>
+            <button class="small-action danger-action" id="account-sign-out" type="button" hidden>Se déconnecter</button>
+        </div>
     </dialog>
 
     <dialog class="modal" id="expense-modal" aria-labelledby="expense-modal-title">

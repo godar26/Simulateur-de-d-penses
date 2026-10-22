@@ -4,7 +4,16 @@
     "private": true,
     "description": "Simulateur de gestion de budget installable et hors ligne",
     "scripts": {
-        "start": "node server.js",
+        "dev": "vite --host 0.0.0.0",
+        "build": "vite build",
+        "preview": "vite preview --host 0.0.0.0",
+        "start": "vite --host 0.0.0.0",
         "test": "node --test"
+    },
+    "dependencies": {
+        "@supabase/supabase-js": "^2.118.0"
+    },
+    "devDependencies": {
+        "vite": "^8.3.5"
     }
 }
