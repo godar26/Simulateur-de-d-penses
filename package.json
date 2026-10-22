@@ -1,0 +1,10 @@
+{
+    "name": "clair-budget",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Simulateur de gestion de budget installable et hors ligne",
+    "scripts": {
+        "start": "node server.js",
+        "test": "node --test"
+    }
+}

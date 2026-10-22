@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="fr">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0F172A">
+    <meta name="description" content="Suivez vos dépenses, organisez votre épargne et avancez vers vos objectifs.">
+    <title>AkFi — Budget du foyer</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icons/clair-192.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="styles.css">
+    <script src="budget-core.js" defer></script>
+    <script src="app.js" defer></script>
+</head>
+
+<body>
+    <div class="app-loader" id="app-loader" role="status" aria-live="polite">
+        <div class="loader-lockup">
+            <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="loader-wordmark">AkFi<span class="brand-period">.</span></span>
+        </div>
+        <span class="loader-progress" aria-hidden="true"><span></span></span>
+        <span class="loader-caption">Préparation de votre espace</span>
+    </div>
+    <div class="app-shell">
+        <aside class="sidebar" aria-label="Navigation principale">
+            <a class="brand" href="#accueil" aria-label="Clair, accueil">
+                <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span>AkFi<span class="brand-period">.</span></span>
+            </a>
+
+            <div class="sidebar-label">ESPACE PERSONNEL</div>
+            <nav class="main-nav">
+                <a class="nav-link is-active" href="#accueil" aria-current="page"><span class="nav-symbol">◫</span>Vue
+                    d'ensemble</a>
+                <a class="nav-link" href="#depenses"><span class="nav-symbol">↗</span>Dépenses<span class="nav-count"
+                        id="expense-count">0</span></a>
+                <a class="nav-link" href="#categories"><span class="nav-symbol">▦</span>Catégories</a>
+                <a class="nav-link" href="#objectifs"><span class="nav-symbol">◎</span>Objectifs</a>
+            </nav>
+
+            <div class="sidebar-bottom">
+                <div class="month-note"><span class="status-dot"></span><span id="sidebar-month">Octobre 2026</span>
+                </div>
+                <div class="profile">
+                    <div class="avatar" aria-hidden="true">M</div>
+                    <div class="profile-copy"><strong>Mon foyer</strong><span>Budget personnel</span></div>
+                    <span class="profile-more" aria-hidden="true">···</span>
+                </div>
+            </div>
+        </aside>
+
+        <main id="accueil" class="main-content">
+            <header class="topbar">
+                <div class="breadcrumb"><span>Mon espace</span><span class="crumb-separator">/</span><strong>Vue
+                        d'ensemble</strong></div>
+                <div class="topbar-actions">
+                    <div class="month-picker"><span class="calendar-symbol" aria-hidden="true">▦</span><span
+                            id="topbar-month">Octobre 2026</span></div>
+                    <label class="currency-picker" for="currency-picker"><span>Devise</span><select id="currency-picker"
+                            aria-label="Choisir la devise">
+                            <option value="EUR">EUR €</option>
+                            <option value="USD">USD $</option>
+                            <option value="XOF">FCFA</option>
+                            <option value="MAD">MAD DH</option>
+                        </select></label>
+                    <button class="icon-button theme-toggle" id="toggle-theme" type="button"
+                        aria-label="Passer en mode clair" title="Passer en mode clair">☼</button>
+                    <button class="avatar avatar-small" id="edit-name" type="button"
+                        aria-label="Modifier le prénom">M</button>
+                </div>
+            </header>
+
+            <section class="page-intro">
+                <div>
+                    <p class="eyebrow"><span class="eyebrow-line"></span>TON ARGENT, EN CLAIR</p>
+                    <h1 id="greeting-title">Bonjour, bienvenue chez vous.</h1>
+                    <p class="intro-copy">Un petit point sur les finances du foyer, et le mois devient plus simple.</p>
+                </div>
+                <div class="intro-actions"><button class="button button-income" id="open-income-entry"
+                        type="button"><span class="button-plus" aria-hidden="true">+</span> Ajouter un
+                        revenu</button><button class="button button-primary" id="open-expense" type="button"><span
+                            class="button-plus" aria-hidden="true">+</span> Ajouter une dépense</button></div>
+            </section>
+
+            <section class="dashboard-grid" aria-label="Situation financière du mois">
+                <article class="panel balance-panel" aria-labelledby="balance-panel-title">
+                    <div class="balance-panel-heading">
+                        <div>
+                            <p class="section-kicker">TON ARGENT, EN TEMPS RÉEL</p>
+                            <h2 id="balance-panel-title">Solde disponible</h2>
+                        </div>
+                        <span class="live-status"><span class="status-dot"></span>Ce mois-ci</span>
+                    </div>
+                    <div class="balance-amount-row"><strong class="summary-value" id="available-value">—</strong><span
+                            class="balance-context">après dépenses et épargne</span></div>
+                    <div class="chart-heading"><span>Évolution du solde</span><span id="chart-period">Depuis le
+                            1er</span></div>
+                    <svg class="balance-chart" viewBox="0 0 760 220" role="img"
+                        aria-labelledby="chart-title chart-description" preserveAspectRatio="none">
+                        <title id="chart-title">Évolution du solde disponible</title>
+                        <desc id="chart-description">Courbe calculée à partir des dépenses enregistrées ce mois-ci.
+                        </desc>
+                        <defs>
+                            <linearGradient id="chart-fill" x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="0%" stop-color="#10B981" stop-opacity=".28"></stop>
+                                <stop offset="100%" stop-color="#10B981" stop-opacity="0"></stop>
+                            </linearGradient>
+                        </defs>
+                        <g class="chart-gridlines" aria-hidden="true">
+                            <path d="M40 30H740 M40 82H740 M40 134H740 M40 186H740"></path>
+                        </g>
+                        <path id="balance-area" class="balance-area" d=""></path>
+                        <path id="balance-line" class="balance-line" d=""></path>
+                        <circle id="balance-glow" class="balance-glow" r="12" cx="0" cy="0"></circle>
+                        <circle id="balance-marker" class="balance-marker" r="4.5" cx="0" cy="0"></circle>
+                        <g class="chart-labels" aria-hidden="true"><text x="40" y="211"
+                                id="chart-start-label">01</text><text x="390" y="211" text-anchor="middle"
+                                id="chart-middle-label">—</text><text x="740" y="211" text-anchor="end"
+                                id="chart-end-label">Aujourd'hui</text></g>
+                    </svg>
+                </article>
+
+                <article class="panel category-panel" id="categories">
+                    <div class="section-heading">
+                        <div>
+                            <p class="section-kicker">OÙ VA TON ARGENT</p>
+                            <h2>Dépenses par catégorie</h2>
+                        </div>
+                        <button class="text-action category-settings-button" id="open-category-settings"
+                            type="button">Gérer les postes</button>
+                    </div>
+                    <div class="spending-content">
+                        <div class="donut-chart" id="spending-donut" role="img"
+                            aria-label="Répartition des dépenses par catégorie">
+                            <div class="donut-hole"><span>CE MOIS</span><strong id="donut-total">—</strong></div>
+                        </div>
+                        <div class="category-list" id="category-list"></div>
+                    </div>
+                </article>
+            </section>
+
+            <section class="summary-grid" aria-label="Indicateurs du mois">
+                <article class="summary-card">
+                    <div class="card-topline"><span class="card-label">DÉPENSES DU MOIS</span><span
+                            class="card-icon expense-icon" aria-hidden="true">↘</span></div>
+                    <strong class="summary-value" id="expenses-value">—</strong>
+                    <div class="summary-foot"><span id="expense-detail">Sur tous tes postes</span></div>
+                </article>
+                <article class="summary-card">
+                    <div class="card-topline"><span class="card-label">ÉPARGNE CONSEILLÉE</span><span
+                            class="card-icon saving-icon" aria-hidden="true">✳</span></div>
+                    <strong class="summary-value" id="saving-value">—</strong>
+                    <div class="summary-foot"><span id="saving-detail">20 % de tes revenus</span></div>
+                </article>
+                <article class="summary-card income-card">
+                    <div class="card-topline"><span class="card-label">REVENUS DU MOIS</span><button class="text-action"
+                            id="edit-income" type="button">Modifier <span aria-hidden="true">↗</span></button></div>
+                    <strong class="summary-value" id="income-value">—</strong>
+                    <div class="summary-foot"><span>Revenu net du foyer</span></div>
+                </article>
+            </section>
+
+            <section class="planning-grid">
+                <article class="panel savings-panel">
+                    <div class="section-heading">
+                        <div>
+                            <p class="section-kicker">PETIT À PETIT</p>
+                            <h2>Ton épargne</h2>
+                        </div>
+                        <span class="round-icon" aria-hidden="true">✳</span>
+                    </div>
+                    <div class="savings-figure"><strong id="saved-total">—</strong><span>déjà de côté</span></div>
+                    <div class="savings-track" aria-label="Progression de l'épargne globale"><span
+                            id="savings-track-fill"></span></div>
+                    <div class="savings-caption"><span id="saving-progress-label">—</span><span
+                            id="saving-percent">—</span></div>
+                    <div class="recommendation"><span class="recommendation-icon" aria-hidden="true">↗</span>
+                        <p><strong id="recommendation-title">Cap sur ton épargne</strong><span
+                                id="recommendation-copy">Une petite somme régulière fait déjà la différence.</span></p>
+                    </div>
+                    <button class="button button-secondary button-full" id="open-contribution" type="button">Mettre de
+                        côté <span aria-hidden="true">→</span></button>
+                </article>
+                <article class="panel scenario-panel">
+                    <div class="section-heading">
+                        <div>
+                            <p class="section-kicker">À TOI DE JOUER</p>
+                            <h2>Et si tu réduisais tes sorties ?</h2>
+                        </div><span class="round-icon" aria-hidden="true">↘</span>
+                    </div>
+                    <label class="scenario-label" for="scenario-cut"><span>Réduction des dépenses</span><strong
+                            id="scenario-percent">20 %</strong></label>
+                    <input id="scenario-cut" class="scenario-slider" type="range" min="0" max="50" step="5" value="20">
+                    <div class="scenario-result"><span>Économie estimée ce mois-ci</span><strong
+                            id="scenario-savings">—</strong></div>
+                    <p class="scenario-note" id="scenario-note">Sur la base de tes dépenses enregistrées.</p>
+                </article>
+                <article class="panel recurring-panel">
+                    <div class="section-heading">
+                        <div>
+                            <p class="section-kicker">AUTOMATISER LE SUIVI</p>
+                            <h2>Revenus & récurrences</h2>
+                        </div><button class="icon-button" id="open-recurring" type="button"
+                            aria-label="Ajouter une récurrence" title="Ajouter une récurrence">+</button>
+                    </div>
+                    <div class="recurring-list" id="recurring-list"></div>
+                    <button class="goal-add-link" id="open-recurring-secondary" type="button"><span
+                            aria-hidden="true">+</span> Ajouter un revenu ou une charge fixe</button>
+                </article>
+            </section>
+
+            <section class="lower-grid">
+                <article class="panel transactions-panel" id="depenses">
+                    <div class="section-heading transaction-heading">
+                        <div>
+                            <p class="section-kicker">LES DERNIERS MOUVEMENTS</p>
+                            <h2>Transactions récentes <span class="heading-count" id="transaction-count">0</span></h2>
+                        </div>
+                        <button class="icon-button" id="open-expense-secondary" type="button"
+                            aria-label="Ajouter une dépense" title="Ajouter une dépense">+</button>
+                    </div>
+                    <div class="transaction-controls">
+                        <input id="transaction-search" type="search" placeholder="Rechercher une transaction"
+                            aria-label="Rechercher une transaction">
+                        <div class="transaction-actions"><button class="small-action" id="export-csv"
+                                type="button">Exporter CSV</button><button class="small-action" id="export-pdf"
+                                type="button">Exporter PDF</button><button class="small-action" id="import-csv-button"
+                                type="button">Importer CSV</button><input id="import-csv-file" type="file"
+                                accept=".csv,text/csv" hidden></div>
+                    </div>
+                    <details class="filter-details">
+                        <summary>Filtres avancés</summary>
+                        <div class="filter-grid">
+                            <label>Date de début<input id="filter-from" type="date"></label><label>Date de fin<input
+                                    id="filter-to" type="date"></label>
+                            <label>Catégorie<select id="filter-category">
+                                    <option value="">Toutes les catégories</option>
+                                </select></label><label>Type<select id="filter-type">
+                                    <option value="">Tous</option>
+                                    <option value="expense">Dépense</option>
+                                    <option value="income">Revenu</option>
+                                </select></label>
+                            <label>Montant min.<input id="filter-min" type="number" min="0" step="0.01"
+                                    placeholder="0"></label><label>Montant max.<input id="filter-max" type="number"
+                                    min="0" step="0.01" placeholder="Sans limite"></label>
+                        </div>
+                    </details>
+                    <div class="transaction-list" id="transaction-list"></div>
+                    <div class="empty-state" id="expense-empty" hidden><span class="empty-illustration"
+                            aria-hidden="true">⌕</span>
+                        <p>Aucune transaction pour ces filtres.</p><button class="text-action" id="empty-add-expense"
+                            type="button">Ajouter une transaction</button>
+                    </div>
+                </article>
+
+                <article class="panel goals-panel" id="objectifs">
+                    <div class="section-heading">
+                        <div>
+                            <p class="section-kicker">TES PROJETS, À TON RYTHME</p>
+                            <h2>Objectifs d'épargne</h2>
+                        </div>
+                        <button class="icon-button" id="open-goal" type="button" aria-label="Créer un objectif"
+                            title="Créer un objectif">+</button>
+                    </div>
+                    <div class="goal-list" id="goal-list"></div>
+                    <button class="goal-add-link" id="open-goal-secondary" type="button"><span
+                            aria-hidden="true">+</span> Créer un objectif</button>
+                </article>
+            </section>
+
+            <footer class="page-footer"><span>Les bons choix commencent par y voir clair.</span><span>Données
+                    enregistrées sur cet appareil <span class="footer-lock" aria-hidden="true">◆</span></span></footer>
+        </main>
+    </div>
+
+    <dialog class="modal welcome-modal" id="welcome-modal" aria-labelledby="welcome-modal-title">
+        <form class="modal-form" id="welcome-form">
+            <div class="modal-header">
+                <div>
+                    <p class="section-kicker">TON ESPACE PERSONNEL</p>
+                    <h2 id="welcome-modal-title">Bienvenue chez AkFi</h2>
+                </div>
+            </div>
+            <p class="modal-description">Comment souhaites-tu être appelé·e dans l’application ?</p>
+            <label class="field-label" for="welcome-name">Ton nom</label>
+            <input id="welcome-name" name="name" type="text" maxlength="40" autocomplete="name"
+                placeholder="Ex. Samira El Amrani" required>
+            <div class="modal-actions"><button class="button button-primary" type="submit">Entrer dans mon
+                    espace</button></div>
+        </form>
+    </dialog>
+
+    <dialog class="modal" id="expense-modal" aria-labelledby="expense-modal-title">
+        <form class="modal-form" id="expense-form">
+            <div class="modal-header">
+                <div>
+                    <p class="section-kicker">TON BUDGET AU QUOTIDIEN</p>
+                    <h2 id="expense-modal-title">Ajouter une dépense</h2>
+                </div><button class="modal-close" type="button" data-close aria-label="Fermer">×</button>
+            </div>
+            <label class="field-label" for="expense-name">Nom de la dépense</label>
+            <input id="expense-name" name="name" type="text" placeholder="Ex. Courses du samedi" maxlength="48"
+                required>
+            <div class="field-row">
+                <div><label class="field-label" for="expense-amount">Montant</label>
+                    <div class="amount-field"><input id="expense-amount" name="amount" type="number" min="0.01"
+                            step="0.01" placeholder="0,00" required><span class="currency-symbol">€</span></div>
+                </div>
+                <div><label class="field-label" for="expense-date">Date</label><input id="expense-date" name="date"
+                        type="date" required></div>
+            </div>
+            <label class="field-label" for="expense-category">Catégorie</label>
+            <select id="expense-category" name="category" required></select>
+            <div class="modal-actions"><button class="button button-plain" type="button"
+                    data-close>Annuler</button><button class="button button-primary" type="submit">Enregistrer la
+                    dépense</button></div>
+        </form>
+    </dialog>
+
+    <dialog class="modal" id="income-modal" aria-labelledby="income-modal-title">
+        <form class="modal-form" id="income-form">
+            <div class="modal-header">
+                <div>
+                    <p class="section-kicker">PARAMÈTRES DU FOYER</p>
+                    <h2 id="income-modal-title">Revenu mensuel</h2>
+                </div><button class="modal-close" type="button" data-close aria-label="Fermer">×</button>
+            </div>
+            <p class="modal-description">Indique le revenu net mensuel disponible pour le foyer.</p>
+            <label class="field-label" for="income-amount">Revenu net mensuel</label>
+            <div class="amount-field"><input id="income-amount" name="income" type="number" min="0" step="0.01"
+                    required><span class="currency-symbol">€</span></div>
+            <div class="modal-actions"><button class="button button-plain" type="button"
+                    data-close>Annuler</button><button class="button button-primary" type="submit">Enregistrer</button>
+            </div>
+        </form>
+    </dialog>
+
+    <dialog class="modal" id="goal-modal" aria-labelledby="goal-modal-title">
+        <form class="modal-form" id="goal-form">
+            <div class="modal-header">
+                <div>
+                    <p class="section-kicker">UN PROJET À LA FOIS</p>
+                    <h2 id="goal-modal-title">Nouvel objectif</h2>
+                </div><button class="modal-close" type="button" data-close aria-label="Fermer">×</button>
+            </div>
+            <label class="field-label" for="goal-name">Nom de l'objectif</label>
+            <input id="goal-name" name="name" type="text" placeholder="Ex. Week-end en famille" maxlength="40" required>
+            <label class="field-label" for="goal-target">Montant à atteindre</label>
+            <div class="amount-field"><input id="goal-target" name="target" type="number" min="1" step="0.01"
+                    placeholder="1 000" required><span class="currency-symbol">€</span></div>
+            <div class="modal-actions"><button class="button button-plain" type="button"
+                    data-close>Annuler</button><button class="button button-primary" type="submit">Créer
+                    l'objectif</button></div>
+        </form>
+    </dialog>
+
+    <dialog class="modal" id="contribution-modal" aria-labelledby="contribution-modal-title">
+        <form class="modal-form" id="contribution-form">
+            <div class="modal-header">
+                <div>
+                    <p class="section-kicker">FAIRE GRANDIR TON ÉPARGNE</p>
+                    <h2 id="contribution-modal-title">Mettre de côté</h2>
+                </div><button class="modal-close" type="button" data-close aria-label="Fermer">×</button>
+            </div>
+            <label class="field-label" for="contribution-goal">Pour quel objectif ?</label>
+            <select id="contribution-goal" name="goal" required></select>
+            <label class="field-label" for="contribution-amount">Montant à verser</label>
+            <div class="amount-field"><input id="contribution-amount" name="amount" type="number" min="0.01" step="0.01"
+                    placeholder="0,00" required><span class="currency-symbol">€</span></div>
+            <p class="form-hint" id="contribution-hint">Ton reste à vivre sera mis à jour automatiquement.</p>
+            <div class="modal-actions"><button class="button button-plain" type="button"
+                    data-close>Annuler</button><button class="button button-primary" type="submit">Confirmer le
+                    versement</button></div>
+        </form>
+    </dialog>
+
+    <dialog class="modal" id="income-entry-modal" aria-labelledby="income-entry-title">
+        <form class="modal-form" id="income-entry-form">
+            <div class="modal-header">
+                <div>
+                    <p class="section-kicker">ENTRÉE D'ARGENT</p>
+                    <h2 id="income-entry-title">Ajouter un revenu</h2>
+                </div><button class="modal-close" type="button" data-close aria-label="Fermer">×</button>
+            </div>
+            <label class="field-label" for="income-entry-name">Source du revenu</label><input id="income-entry-name"
+                name="name" type="text" placeholder="Ex. Prime, vente…" maxlength="48" required>
+            <div class="field-row">
+                <div><label class="field-label" for="income-entry-amount">Montant</label>
+                    <div class="amount-field"><input id="income-entry-amount" name="amount" type="number" min="0.01"
+                            step="0.01" required><span class="currency-symbol">€</span></div>
+                </div>
+                <div><label class="field-label" for="income-entry-date">Date</label><input id="income-entry-date"
+                        name="date" type="date" required></div>
+            </div>
+            <div class="modal-actions"><button class="button button-plain" type="button"
+                    data-close>Annuler</button><button class="button button-primary" type="submit">Enregistrer le
+                    revenu</button></div>
+        </form>
+    </dialog>
+
+    <dialog class="modal" id="category-modal" aria-labelledby="category-modal-title">
+        <form class="modal-form" id="category-form">
+            <div class="modal-header">
+                <div>
+                    <p class="section-kicker">ORGANISER TON BUDGET</p>
+                    <h2 id="category-modal-title">Gérer les catégories</h2>
+                </div><button class="modal-close" type="button" data-close aria-label="Fermer">×</button>
+            </div>
+            <label class="field-label" for="category-existing">Catégorie à modifier</label><select
+                id="category-existing"></select>
+            <div class="category-edit-actions"><button class="small-action" id="new-category" type="button">Nouvelle
+                    catégorie</button><button class="small-action danger-action" id="delete-category"
+                    type="button">Supprimer</button></div>
+            <label class="field-label" for="category-name">Nom</label><input id="category-name" name="name" type="text"
+                maxlength="32" required>
+            <label class="field-label" for="category-icon">Icône</label>
+            <select id="category-icon" name="icon" required>
+                <option value="⌂">⌂ Logement</option>
+                <option value="▤">▤ Courses</option>
+                <option value="↗">↗ Transport</option>
+                <option value="⌑">⌑ Maison</option>
+                <option value="✳">✳ Loisirs</option>
+                <option value="+">+ Santé</option>
+                <option value="🏠">🏠 Maison et travaux</option>
+                <option value="🛒">🛒 Alimentation</option>
+                <option value="🚗">🚗 Voiture</option>
+                <option value="💡">💡 Énergie</option>
+                <option value="🍽️">🍽️ Restaurant</option>
+                <option value="🎬">🎬 Sortie</option>
+                <option value="💊">💊 Santé et pharmacie</option>
+                <option value="🐾">🐾 Animaux</option>
+                <option value="✈️">✈️ Voyage</option>
+                <option value="📱">📱 Téléphone</option>
+                <option value="🎓">🎓 Éducation</option>
+                <option value="💧">💧 Eau</option>
+                <option value="•">• Autre</option>
+            </select>
+            <div class="category-color-field"><label class="field-label" for="category-color">Couleur</label><input
+                    id="category-color" name="color" type="color" value="#10b981" required></div>
+            <label class="field-label" for="category-budget">Budget mensuel</label>
+            <div class="amount-field"><input id="category-budget" name="budget" type="number" min="0" step="0.01"
+                    required><span class="currency-symbol">€</span></div>
+            <div class="modal-actions"><button class="button button-plain" type="button"
+                    data-close>Fermer</button><button class="button button-primary" type="submit">Enregistrer</button>
+            </div>
+        </form>
+    </dialog>
+
+    <dialog class="modal" id="recurring-modal" aria-labelledby="recurring-modal-title">
+        <form class="modal-form" id="recurring-form">
+            <div class="modal-header">
+                <div>
+                    <p class="section-kicker">AUTOMATISER LE SUIVI</p>
+                    <h2 id="recurring-modal-title">Nouveau mouvement récurrent</h2>
+                </div><button class="modal-close" type="button" data-close aria-label="Fermer">×</button>
+            </div>
+            <label class="field-label" for="recurring-type">Type</label><select id="recurring-type" name="type">
+                <option value="expense">Dépense</option>
+                <option value="income">Revenu</option>
+            </select>
+            <label class="field-label" for="recurring-name">Libellé</label><input id="recurring-name" name="name"
+                type="text" placeholder="Ex. Loyer, salaire, abonnement…" maxlength="48" required>
+            <div class="field-row">
+                <div><label class="field-label" for="recurring-amount">Montant</label>
+                    <div class="amount-field"><input id="recurring-amount" name="amount" type="number" min="0.01"
+                            step="0.01" required><span class="currency-symbol">€</span></div>
+                </div>
+                <div><label class="field-label" for="recurring-day">Jour du mois</label><input id="recurring-day"
+                        name="day" type="number" min="1" max="31" value="1" required></div>
+            </div>
+            <label class="field-label" for="recurring-category">Catégorie de dépense</label><select
+                id="recurring-category" name="category"></select>
+            <p class="form-hint">Le mouvement sera ajouté automatiquement à son échéance chaque mois.</p>
+            <div class="modal-actions"><button class="button button-plain" type="button"
+                    data-close>Annuler</button><button class="button button-primary" type="submit">Enregistrer la
+                    récurrence</button></div>
+        </form>
+    </dialog>
+
+    <section class="print-report" id="print-report" aria-label="Bilan mensuel imprimable">
+        <p>CLAIR · BILAN MENSUEL</p>
+        <h1 id="print-title">Bilan du mois</h1>
+        <div class="print-summary" id="print-summary"></div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Libellé</th>
+                    <th>Catégorie</th>
+                    <th>Montant</th>
+                </tr>
+            </thead>
+            <tbody id="print-rows"></tbody>
+        </table>
+    </section>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+
+</html>
