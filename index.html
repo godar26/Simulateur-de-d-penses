@@ -379,6 +379,23 @@
         </form>
     </dialog>
 
+    <dialog class="modal" id="edit-goal-modal" aria-labelledby="edit-goal-modal-title">
+        <form class="modal-form" id="edit-goal-form">
+            <input id="edit-goal-id" name="id" type="hidden">
+            <div class="modal-header">
+                <div><p class="section-kicker">GESTION DE TON PROJET</p><h2 id="edit-goal-modal-title">Modifier l’objectif</h2></div>
+                <button class="modal-close" type="button" data-close aria-label="Fermer">×</button>
+            </div>
+            <label class="field-label" for="edit-goal-name">Nom de l’objectif</label>
+            <input id="edit-goal-name" name="name" type="text" maxlength="40" required>
+            <label class="field-label" for="edit-goal-current">Somme déjà épargnée</label>
+            <div class="amount-field"><input id="edit-goal-current" name="current" type="number" min="0" step="0.01" required><span class="currency-symbol">€</span></div>
+            <label class="field-label" for="edit-goal-target">Montant à atteindre</label>
+            <div class="amount-field"><input id="edit-goal-target" name="target" type="number" min="0.01" step="0.01" required><span class="currency-symbol">€</span></div>
+            <div class="modal-actions"><button class="button button-plain" id="delete-goal" type="button">Supprimer</button><button class="button button-primary" type="submit">Enregistrer</button></div>
+        </form>
+    </dialog>
+
     <dialog class="modal" id="contribution-modal" aria-labelledby="contribution-modal-title">
         <form class="modal-form" id="contribution-form">
             <div class="modal-header">

@@ -568,7 +568,7 @@ function renderGoals() {
         return `<div class="goal-item">
       <div class="goal-topline"><div class="goal-title"><span class="goal-emblem" aria-hidden="true">${index % 2 === 0 ? '◎' : '⌂'}</span><span>${escapeHtml(goal.name)}</span></div><span class="goal-amount"><strong>${euro.format(goal.current)}</strong> / ${euro.format(goal.target)}</span></div>
       <div class="goal-meter" role="progressbar" aria-label="Progression ${escapeHtml(goal.name)}" aria-valuemin="0" aria-valuemax="${goal.target}" aria-valuenow="${Math.min(goal.current, goal.target)}"><span style="width:${progress}%"></span></div>
-      <div class="goal-bottom"><span>${remaining > 0 ? `Encore ${euro.format(remaining)} · ${projection}` : projection}</span><button class="text-action" type="button" data-contribute="${escapeHtml(goal.id)}" ${remaining === 0 ? 'disabled' : ''}>${remaining > 0 ? 'Verser +' : 'Terminé'}</button></div>
+      <div class="goal-bottom"><span>${remaining > 0 ? `Encore ${euro.format(remaining)} · ${projection}` : projection}</span><span class="goal-actions"><button class="text-action" type="button" data-edit-goal="${escapeHtml(goal.id)}">Modifier</button><button class="text-action" type="button" data-contribute="${escapeHtml(goal.id)}" ${remaining === 0 ? 'disabled' : ''}>${remaining > 0 ? 'Verser +' : 'Terminé'}</button></span></div>
     </div>`;
     }).join('');
     byId('open-contribution').disabled = goals.length === 0 || goals.every((goal) => goal.current >= goal.target);
@@ -912,6 +912,46 @@ byId('goal-form').addEventListener('submit', (event) => {
     event.currentTarget.reset();
     closeModal(goalModal);
     showToast('Objectif créé. À toi de jouer !');
+});
+
+byId('goal-list').addEventListener('click', (event) => {
+    const button = event.target.closest('[data-edit-goal]');
+    if (!button) return;
+    const goal = state.goals.find((entry) => entry.id === button.dataset.editGoal);
+    if (!goal) return;
+    byId('edit-goal-id').value = goal.id;
+    byId('edit-goal-name').value = goal.name;
+    byId('edit-goal-current').value = goal.current;
+    byId('edit-goal-target').value = goal.target;
+    openModal(byId('edit-goal-modal'));
+});
+
+byId('edit-goal-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const goal = state.goals.find((entry) => entry.id === form.get('id'));
+    const name = String(form.get('name')).trim();
+    const current = Number(form.get('current'));
+    const target = Number(form.get('target'));
+    if (!goal || !name || !Number.isFinite(current) || current < 0 || !Number.isFinite(target) || target <= 0) return;
+    goal.name = name;
+    goal.current = current;
+    goal.target = target;
+    render();
+    closeModal(byId('edit-goal-modal'));
+    showToast('Objectif mis à jour.');
+});
+
+byId('delete-goal').addEventListener('click', () => {
+    const id = byId('edit-goal-id').value;
+    const goal = state.goals.find((entry) => entry.id === id);
+    if (!goal) return;
+    if (!window.confirm(`Supprimer l’objectif « ${goal.name} » et son historique de versements ?`)) return;
+    state.goals = state.goals.filter((entry) => entry.id !== id);
+    state.contributions = state.contributions.filter((entry) => entry.goalId !== id);
+    render();
+    closeModal(byId('edit-goal-modal'));
+    showToast('Objectif supprimé.');
 });
 
 byId('category-form').addEventListener('submit', (event) => {

@@ -1020,6 +1020,12 @@ h2 {
     font-size: 8px;
 }
 
+.goal-actions {
+    display: inline-flex;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
 .goal-add-link {
     display: flex;
     align-items: center;

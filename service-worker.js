@@ -1,4 +1,4 @@
-const CACHE_NAME = 'akfi-shell-v8';
+const CACHE_NAME = 'akfi-shell-v10';
 const APP_SHELL = [
     './',
     './index.html',
@@ -17,7 +17,7 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
     event.waitUntil(caches.keys().then((keys) => Promise.all(
-        keys.filter((key) => key.startsWith('clair-shell-') && key !== CACHE_NAME)
+        keys.filter((key) => (key.startsWith('clair-shell-') || key.startsWith('akfi-shell-')) && key !== CACHE_NAME)
             .map((key) => caches.delete(key)),
     )));
     self.clients.claim();
